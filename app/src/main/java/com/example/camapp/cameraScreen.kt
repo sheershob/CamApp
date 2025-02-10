@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
@@ -15,7 +16,14 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.view.PreviewView
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.FileOutputOptions
 import androidx.camera.video.OutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoRecordEvent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -46,8 +54,10 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.contentValuesOf
+import java.io.File
 import kotlin.contracts.contract
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -99,48 +109,34 @@ fun cameraScreen() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val previewView: PreviewView = remember { PreviewView(context) }
-
-    // Camera state variable
     var isBackCamera by remember { mutableStateOf(true) }
+    var isRecording by remember { mutableStateOf(false) }
+    val cameraSelector = remember { mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA) }
+    val imageCapture = remember { ImageCapture.Builder().build() }
 
-    // Ensure imageCapture is properly recreated when camera toggles
-    var imageCapture by remember { mutableStateOf(ImageCapture.Builder().build()) }
+    val recorder = Recorder.Builder()
+        .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
+        .build()
 
-    val cameraSelector = if (isBackCamera)
-        CameraSelector.DEFAULT_BACK_CAMERA
-    else
-        CameraSelector.DEFAULT_FRONT_CAMERA
-
+    val videoCapture = VideoCapture.withOutput(recorder)
     val preview = remember { Preview.Builder().build() }
 
-    LaunchedEffect(isBackCamera) {
+    LaunchedEffect(cameraSelector.value) {
         val cameraProvider = context.getCameraProvider()
         cameraProvider.unbindAll()
-
-        // Recreate imageCapture to prevent old references
-        imageCapture = ImageCapture.Builder().build()
-
-        try{
-            cameraProvider.bindToLifecycle(
-                lifecycleOwner,
-                cameraSelector,
-                preview,
-                imageCapture
-            )
-            preview.setSurfaceProvider(previewView.surfaceProvider)
-        }
-        catch (e: Exception){
-            Log.e("CameraPreview", "Error: ${e.message}")
-        }
+        cameraProvider.bindToLifecycle(
+            lifecycleOwner = lifecycleOwner,
+            cameraSelector = cameraSelector.value,
+            preview,
+            imageCapture,
+            videoCapture
+        )
+        preview.setSurfaceProvider(previewView.surfaceProvider)
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.BottomCenter
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
-        // Bottom Bar with Buttons
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -152,35 +148,100 @@ fun cameraScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                // Toggle Camera Button
                 IconButton(
-                    onClick = { isBackCamera = !isBackCamera },
-                    modifier = Modifier.size(60.dp)
-                        .background(Color.White, CircleShape)
-                        .padding(8.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.swap_camera),
-                        contentDescription = "Switch Camera"
-                    )
-                }
-
-                // Capture Button
-                IconButton(
-                    onClick = { capturePhoto(imageCapture, context) },
+                    onClick = {
+                        isRecording = if (!isRecording) {
+                            startRecording(videoCapture, context)
+                            true
+                        } else {
+                            stopRecording()
+                            false
+                        }
+                    },
                     modifier = Modifier
                         .size(60.dp)
                         .background(Color.White, CircleShape)
                         .padding(8.dp)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.lens),
-                        contentDescription = "Capture"
+                        painter = painterResource(id = if (isRecording) R.drawable.stop_icon else R.drawable.video),
+                        contentDescription = "Record Video",
+                        tint = Color.Unspecified
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        capturePhoto(imageCapture, context)
+                    },
+                    modifier = Modifier
+                        .size(60.dp)
+                        .background(Color.White, CircleShape)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.lens),
+                        contentDescription = "Capture Image",
+                        tint = Color.Unspecified
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        isBackCamera = !isBackCamera
+                        cameraSelector.value = if (isBackCamera) CameraSelector.DEFAULT_BACK_CAMERA else CameraSelector.DEFAULT_FRONT_CAMERA
+                    },
+                    modifier = Modifier
+                        .size(60.dp)
+                        .background(Color.White, CircleShape)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.swap_camera),
+                        contentDescription = "Switch Camera",
+                        tint = Color.Unspecified
                     )
                 }
             }
         }
     }
+}
+
+private var recording: Recording? = null
+
+private fun startRecording(videoCapture: VideoCapture<Recorder>, context: Context) {
+    val videoFile = File(
+        context.getExternalFilesDir(Environment.DIRECTORY_MOVIES),
+        "VID_${System.currentTimeMillis()}.mp4"
+    )
+    val outputOptions = FileOutputOptions.Builder(videoFile).build()
+
+    recording = videoCapture.output
+        .prepareRecording(context, outputOptions)
+        .apply {
+            if (ActivityCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                withAudioEnabled()
+            }
+        }
+        .start(ContextCompat.getMainExecutor(context)) { event ->
+            when (event) {
+                is VideoRecordEvent.Start -> {
+//                    Toast.makeText(context, "Recording started", Toast.LENGTH_SHORT).show()
+                }
+                is VideoRecordEvent.Finalize -> {
+                    if (event.hasError()) {
+                        Toast.makeText(context, "Error: ${event.error}", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Video saved: ${videoFile.absolutePath}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+}
+
+private fun stopRecording() {
+    recording?.stop()
+    recording = null
 }
 
 
