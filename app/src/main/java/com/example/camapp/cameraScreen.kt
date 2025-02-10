@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -71,13 +72,6 @@ fun permission() {
             permissionGranted.value = permission[android.Manifest.permission.CAMERA] == true
         }
     )
-
-//    LaunchedEffect(Unit) {
-//        permissionGranted.value = ContextCompat.checkSelfPermission(
-//            context,
-//            android.Manifest.permission.CAMERA
-//        ) == PackageManager.PERMISSION_GRANTED
-//    }
 
     if(permissionGranted.value){
         cameraScreen()
@@ -161,7 +155,9 @@ fun cameraScreen() {
                 // Toggle Camera Button
                 IconButton(
                     onClick = { isBackCamera = !isBackCamera },
-                    modifier = Modifier.size(50.dp)
+                    modifier = Modifier.size(60.dp)
+                        .background(Color.White, CircleShape)
+                        .padding(8.dp)
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.swap_camera),
@@ -176,7 +172,12 @@ fun cameraScreen() {
                         .size(60.dp)
                         .background(Color.White, CircleShape)
                         .padding(8.dp)
-                ) { }
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.lens),
+                        contentDescription = "Capture"
+                    )
+                }
             }
         }
     }
