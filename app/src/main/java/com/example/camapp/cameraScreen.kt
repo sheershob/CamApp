@@ -114,6 +114,9 @@ fun cameraScreen() {
     val cameraSelector = remember { mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA) }
     val imageCapture = remember { ImageCapture.Builder().build() }
 
+    var flashMode by remember { mutableStateOf(ImageCapture.FLASH_MODE_OFF) }
+
+
     val recorder = Recorder.Builder()
         .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
         .build()
@@ -185,6 +188,21 @@ fun cameraScreen() {
                         tint = Color.Unspecified
                     )
                 }
+//
+//                IconButton(
+//                    onClick = { /* Open QR Scanner */ },
+//                    modifier = Modifier
+//                        .size(60.dp)
+//                        .background(Color.White, CircleShape)
+//                        .padding(8.dp)
+//                ) {
+//                    Icon(
+//                        painter = painterResource(R.drawable.qr),
+//                        contentDescription = "QR Scanner",
+//                        modifier = Modifier.size(40.dp),
+//                        tint = Color.Unspecified
+//                    )
+//                }
 
                 IconButton(
                     onClick = {
@@ -211,8 +229,8 @@ private var recording: Recording? = null
 
 private fun startRecording(videoCapture: VideoCapture<Recorder>, context: Context) {
     val videoFile = File(
-        context.getExternalFilesDir(Environment.DIRECTORY_MOVIES),
-        "VID_${System.currentTimeMillis()}.mp4"
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
+        "Albums/CamApp Videos/VID_${System.currentTimeMillis()}.mp4"
     )
     val outputOptions = FileOutputOptions.Builder(videoFile).build()
 
