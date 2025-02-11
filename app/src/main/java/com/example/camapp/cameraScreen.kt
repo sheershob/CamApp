@@ -1,9 +1,12 @@
 package com.example.camapp
 
+import androidx.compose.material3.AlertDialog
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
@@ -17,14 +20,12 @@ import androidx.camera.view.PreviewView
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FileOutputOptions
-import androidx.camera.video.OutputOptions
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
 import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,13 +36,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,13 +57,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.contentValuesOf
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import java.io.File
-import kotlin.contracts.contract
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-//@androidx.compose.ui.tooling.preview.Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun permission() {
     val permission = listOf(
@@ -114,15 +116,19 @@ fun cameraScreen() {
     val cameraSelector = remember { mutableStateOf(CameraSelector.DEFAULT_BACK_CAMERA) }
     val imageCapture = remember { ImageCapture.Builder().build() }
 
-    var flashMode by remember { mutableStateOf(ImageCapture.FLASH_MODE_OFF) }
-
+    val scannedText = remember { mutableStateOf<String?>(null) }
+    val isScanning = remember { mutableStateOf(false) }
 
     val recorder = Recorder.Builder()
         .setQualitySelector(QualitySelector.from(Quality.HIGHEST))
         .build()
 
     val videoCapture = VideoCapture.withOutput(recorder)
-    val preview = remember { Preview.Builder().build() }
+    val preview = remember { Preview.Builder().build()
+        .also {
+            it.setSurfaceProvider(previewView.surfaceProvider)
+        }
+    }
 
     LaunchedEffect(cameraSelector.value) {
         val cameraProvider = context.getCameraProvider()
@@ -188,21 +194,33 @@ fun cameraScreen() {
                         tint = Color.Unspecified
                     )
                 }
-//
-//                IconButton(
-//                    onClick = { /* Open QR Scanner */ },
-//                    modifier = Modifier
-//                        .size(60.dp)
-//                        .background(Color.White, CircleShape)
-//                        .padding(8.dp)
-//                ) {
-//                    Icon(
-//                        painter = painterResource(R.drawable.qr),
-//                        contentDescription = "QR Scanner",
-//                        modifier = Modifier.size(40.dp),
-//                        tint = Color.Unspecified
-//                    )
-//                }
+
+                IconButton(
+                    onClick = { isScanning.value = true },
+                    modifier = Modifier
+                        .size(60.dp)
+                        .background(Color.White, CircleShape)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.qr),
+                        contentDescription = "QR Scanner",
+                        modifier = Modifier.size(40.dp),
+                        tint = Color.Unspecified
+                    )
+                }
+                LaunchedEffect(isScanning.value) {
+                    if (isScanning.value) {
+                        scanQRCode(context, imageCapture) { result ->
+                            scannedText.value = result
+                            isScanning.value = false
+                        }
+                    }
+                }
+
+                scannedText.value?.let {
+                    QRDialog(scannedText)
+                }
 
                 IconButton(
                     onClick = {
@@ -310,4 +328,78 @@ private fun capturePhoto(imageCapture: ImageCapture, context: Context){
         }
     )
 
+}
+
+fun scanQRCode(context: Context, imageCapture: ImageCapture, onResult: (String) -> Unit) {
+    val outputOptions = ImageCapture.OutputFileOptions.Builder(
+        context.contentResolver,
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+        ContentValues().apply {
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+        }
+    ).build()
+
+    imageCapture.takePicture(
+        outputOptions,
+        ContextCompat.getMainExecutor(context),
+        object : ImageCapture.OnImageSavedCallback {
+            override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                val uri = outputFileResults.savedUri ?: return
+                processQRCode(context, uri, onResult)
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                Log.e("QRScanner", "Error capturing QR image: ${exception.message}")
+            }
+        }
+    )
+}
+
+fun processQRCode(context: Context, uri: Uri, onResult: (String) -> Unit) {
+    val image = InputImage.fromFilePath(context, uri)
+    val scanner = BarcodeScanning.getClient()
+
+    scanner.process(image)
+        .addOnSuccessListener { barcodes ->
+            for (barcode in barcodes) {
+                barcode.displayValue?.let { onResult(it) }
+            }
+        }
+        .addOnFailureListener { e ->
+            Log.e("QRScanner", "Failed to scan QR code", e)
+        }
+}
+
+fun isValidUrl(text: String?): Boolean {
+    return text?.startsWith("http") == true
+}
+
+@Composable
+fun QRDialog(scannedText: MutableState<String?>) {
+    val context = LocalContext.current
+    val text = scannedText.value ?: "No data"
+    val isLink = isValidUrl(text)
+
+    AlertDialog(
+        onDismissRequest = { scannedText.value = null },
+        title = { Text(if (isLink) "QR Code Scanned" else "Barcode Scanned") },
+        text = { Text(text) },
+        confirmButton = {
+            if (isLink) {  // Show "Open Link" button only for links
+                Button(onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(text))
+                    context.startActivity(intent)
+                    scannedText.value = null
+                }) {
+                    Text("Open Link")
+                }
+            }
+        },
+        dismissButton = {
+            Button(onClick = { scannedText.value = null }) {
+                Text("Close")
+            }
+        },
+        modifier = Modifier.background(Color.DarkGray), // Theming the dialog background
+    )
 }
