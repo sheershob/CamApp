@@ -27,14 +27,7 @@ import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -49,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -57,9 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import java.io.File
 import kotlin.coroutines.resume
@@ -143,12 +135,32 @@ fun cameraScreen() {
         preview.setSurfaceProvider(previewView.surfaceProvider)
     }
 
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+    Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
+
+        IconButton(
+            onClick = {
+                isBackCamera = !isBackCamera
+                cameraSelector.value = if (isBackCamera) CameraSelector.DEFAULT_BACK_CAMERA else CameraSelector.DEFAULT_FRONT_CAMERA
+            },
+            modifier = Modifier
+                .size(90.dp)
+                .background(Color.White.copy(alpha = 0.0f))
+                .align(Alignment.TopEnd)
+                .padding(20.dp),
+            enabled = !isRecording
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.swap_camera),
+                contentDescription = "Switch Camera",
+                tint = if (isRecording) Color.Gray else Color.Unspecified
+            )
+        }
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .align(Alignment.BottomCenter)
                 .background(Color.Black.copy(alpha = 0.5f))
                 .padding(16.dp),
             contentAlignment = Alignment.Center
@@ -220,24 +232,6 @@ fun cameraScreen() {
 
                 scannedText.value?.let {
                     QRDialog(scannedText)
-                }
-
-                IconButton(
-                    onClick = {
-                        isBackCamera = !isBackCamera
-                        cameraSelector.value = if (isBackCamera) CameraSelector.DEFAULT_BACK_CAMERA else CameraSelector.DEFAULT_FRONT_CAMERA
-                    },
-                    modifier = Modifier
-                        .size(60.dp)
-                        .background(Color.White, CircleShape)
-                        .padding(8.dp),
-                    enabled = !isRecording
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.swap_camera),
-                        contentDescription = "Switch Camera",
-                        tint = if (isRecording) Color.Gray else Color.Unspecified
-                    )
                 }
             }
         }
