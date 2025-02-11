@@ -230,12 +230,13 @@ fun cameraScreen() {
                     modifier = Modifier
                         .size(60.dp)
                         .background(Color.White, CircleShape)
-                        .padding(8.dp)
+                        .padding(8.dp),
+                    enabled = !isRecording
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.swap_camera),
                         contentDescription = "Switch Camera",
-                        tint = Color.Unspecified
+                        tint = if (isRecording) Color.Gray else Color.Unspecified
                     )
                 }
             }
