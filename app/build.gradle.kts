@@ -13,7 +13,7 @@ android {
         minSdk = 29
         targetSdk = 35
         versionCode = 3
-        versionName = "1.3"
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -73,6 +73,5 @@ dependencies {
     implementation("androidx.camera:camera-extensions:${camerax_version}")
     // For scanning barcodes and QR codes
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
-    implementation("com.airbnb.android:lottie-compose:6.0.1")
-    implementation("com.google.mlkit:pose-detection:18.0.0-beta5")
+//    implementation("com.google.mlkit:pose-detection:18.0.0-beta5")
 }

@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
@@ -76,22 +77,26 @@ fun permission() {
         }
     )
 
-    if(permissionGranted.value){
+    if (permissionGranted.value) {
         cameraScreen()
-        } else {
-        Column (
+    } else {
+        Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
-
         ) {
+            Text(
+                "Welcome to CamApp!",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
             Button(
                 onClick = {
                     launcher.launch(permission.toTypedArray())
                 }
-
             ) {
-                Text(text = "Grant Permission")
+                Text("Grant Permissions")
             }
         }
     }
@@ -154,7 +159,7 @@ fun cameraScreen() {
                 Icon(
                     painter = painterResource(id = R.drawable.swap_camera),
                     contentDescription = "Switch Camera",
-                    tint = if (isRecording) Color.Gray else Color.Unspecified
+                    tint = if (isRecording) Color.Black else Color.LightGray
                 )
             }
 
