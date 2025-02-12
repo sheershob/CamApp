@@ -168,12 +168,12 @@ fun cameraScreen() {
                 modifier = Modifier.size(80.dp)
                     .background(Color.Transparent)
                     .padding(20.dp),
-                enabled = isBackCamera
+                enabled = isBackCamera and !isRecording
             ) {
                 Icon(
                     painter = painterResource(R.drawable.flash),
                     contentDescription = "Flash",
-                    tint = if(!isBackCamera) Color.Gray.copy(alpha = 0.4f) else (if (TorchEnabled) Color.Yellow else Color.LightGray)
+                    tint = if(!isBackCamera or isRecording) Color.Gray.copy(alpha = 0.4f) else (if (TorchEnabled) Color.Yellow else Color.LightGray)
                 )
             }
         }
