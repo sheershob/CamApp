@@ -167,12 +167,13 @@ fun cameraScreen() {
                 onClick = { TorchEnabled = !TorchEnabled },
                 modifier = Modifier.size(80.dp)
                     .background(Color.Transparent)
-                    .padding(20.dp)
+                    .padding(20.dp),
+                enabled = isBackCamera
             ) {
                 Icon(
                     painter = painterResource(R.drawable.flash),
                     contentDescription = "Flash",
-                    tint = if (TorchEnabled) Color.Yellow else Color.LightGray
+                    tint = if(!isBackCamera) Color.Gray.copy(alpha = 0.4f) else (if (TorchEnabled) Color.Yellow else Color.LightGray)
                 )
             }
         }
@@ -277,7 +278,6 @@ private fun startRecording(videoCapture: VideoCapture<Recorder>, context: Contex
         .start(ContextCompat.getMainExecutor(context)) { event ->
             when (event) {
                 is VideoRecordEvent.Start -> {
-//                    Toast.makeText(context, "Recording started", Toast.LENGTH_SHORT).show()
                 }
                 is VideoRecordEvent.Finalize -> {
                     if (event.hasError()) {
