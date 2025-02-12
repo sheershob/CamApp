@@ -17,6 +17,22 @@ CamApp is a simple camera application for Android, built using Jetpack Compose a
 * **CameraX:** Support library for interacting with the camera.
 * **ML Kit Barcode Scanning:** Library for scanning and decoding QR codes.
 
+## Screenshots
+
+**![Image](https://github.com/user-attachments/assets/7ccb02c7-b1aa-423e-ac77-251ab3433061)**
+
+*These screenshots showcases the app's main camera interface, highlighting the various buttons.*
+
+**![Image](https://github.com/user-attachments/assets/d28fbe33-daeb-450b-a038-9e1551fc3420)**
+
+*The integrated QR code scanner quickly decodes the QR codes and provides the link. The barcode scanner similarly decodes the various encoding standards of barcodes.*
+
+## Storage Stats
+
+**![Image](https://github.com/user-attachments/assets/0d1e8862-1c19-42af-bcd2-7d7d96c3a889)**
+
+*This chart illustrates the breakdown of the APK's contents, showing the size contribution of various components.  Optimizations have been implemented to minimize the app's storage by removing unnecessary libraries. It has a download size of 18.6 MB and apk size of 48.2 MB*
+
 ## Implementation Details
 
 ### Camera Features (CameraX)
@@ -29,7 +45,7 @@ ML Kit's Barcode Scanning API is integrated to enable QR code scanning functiona
 
 ### Video Recording with Audio
 
-Video recording is implemented using CameraX's `VideoCapture` API. The `startRecording` function initializes and starts the video recording process, saving the video file to the device's external storage directory. The `stopRecording` function stops the ongoing recording. The `withAudioEnabled()` option ensures that audio is captured along with the video, provided the user has granted the necessary audio recording permission. The `FileOutputOptions` class is used to specify the location and filename for the saved video.  The `VideoRecordEvent` is used to track the recording state and display toast messages to the user.
+Video recording is implemented using CameraX's `VideoCapture` API. The `startRecording` function initializes and starts the video recording process, saving the video file to the device's external storage directory. The `stopRecording` function stops the ongoing recording. The `withAudioEnabled()` option ensures that audio is captured along with the video, provided the user has granted the necessary audio recording permission. The `FileOutputOptions` class is used to specify the location and filename for the saved video.  The `VideoRecordEvent` is used to track the recording state.
 
 ## Getting Started
 
