@@ -29,6 +29,7 @@ import androidx.camera.video.VideoRecordEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,6 +50,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -130,6 +132,7 @@ fun cameraScreen() {
     }
     var TorchEnabled by remember { mutableStateOf(false) }
     var showBlackout by remember { mutableStateOf(false) }
+    var recordingDuration by remember { mutableStateOf(0L) }
 
     val coroutineScope = rememberCoroutineScope() // Required for launching coroutines
 
@@ -140,6 +143,17 @@ fun cameraScreen() {
             showBlackout = false
         }
     }
+
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingDuration = 0 // Reset timer
+            while (isRecording) {
+                delay(1000L) // Wait for 1 second
+                recordingDuration += 1 // Increment time
+            }
+        }
+    }
+    val formattedTime = String.format("%02d:%02d", recordingDuration / 60, recordingDuration % 60)
 
     LaunchedEffect(cameraSelector.value) {
         val cameraProvider = context.getCameraProvider()
@@ -200,6 +214,26 @@ fun cameraScreen() {
             }
         }
 
+        if (isRecording) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 100.dp)
+                    .align(Alignment.BottomCenter),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = formattedTime,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .background(Color.Red, shape = RoundedCornerShape(8.dp))
+                        .padding(8.dp)
+                )
+            }
+            }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -219,6 +253,7 @@ fun cameraScreen() {
                             true
                         } else {
                             stopRecording()
+                            isRecording = false
                             false
                         }
                     },
@@ -281,19 +316,11 @@ fun cameraScreen() {
         }
     }
 }
-//
-//@Composable
-//fun triggerBlackout() {
-//    showBlackout = true
-//    LaunchedEffect(Unit) {
-//        delay(500L)  // 0.5 seconds delay
-//        showBlackout = false
-//    }
-//}
 
 private var recording: Recording? = null
 
 private fun startRecording(videoCapture: VideoCapture<Recorder>, context: Context, TorchEnabled: Boolean) {
+    stopRecording()
     val videoFile = File(
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
         "Albums/CamApp Videos/VID_${System.currentTimeMillis()}.mp4"
