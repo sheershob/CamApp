@@ -42,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -121,6 +120,7 @@ fun cameraScreen() {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
     }
+    var TorchEnabled by remember { mutableStateOf(false) }
 
     LaunchedEffect(cameraSelector.value) {
         val cameraProvider = context.getCameraProvider()
@@ -138,23 +138,38 @@ fun cameraScreen() {
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
-        IconButton(
-            onClick = {
-                isBackCamera = !isBackCamera
-                cameraSelector.value = if (isBackCamera) CameraSelector.DEFAULT_BACK_CAMERA else CameraSelector.DEFAULT_FRONT_CAMERA
-            },
-            modifier = Modifier
-                .size(90.dp)
-                .background(Color.White.copy(alpha = 0.0f))
-                .align(Alignment.TopEnd)
-                .padding(20.dp),
-            enabled = !isRecording
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.swap_camera),
-                contentDescription = "Switch Camera",
-                tint = if (isRecording) Color.Gray else Color.Unspecified
-            )
+        Column( modifier = Modifier.align(Alignment.TopEnd)) {
+            IconButton(
+                onClick = {
+                    isBackCamera = !isBackCamera
+                    cameraSelector.value =
+                        if (isBackCamera) CameraSelector.DEFAULT_BACK_CAMERA else CameraSelector.DEFAULT_FRONT_CAMERA
+                },
+                modifier = Modifier
+                    .size(90.dp)
+                    .background(Color.Transparent)
+                    .padding(20.dp),
+                enabled = !isRecording
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.swap_camera),
+                    contentDescription = "Switch Camera",
+                    tint = if (isRecording) Color.Gray else Color.Unspecified
+                )
+            }
+
+            IconButton(
+                onClick = { TorchEnabled = !TorchEnabled },
+                modifier = Modifier.size(80.dp)
+                    .background(Color.Transparent)
+                    .padding(20.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.flash),
+                    contentDescription = "Flash",
+                    tint = if (TorchEnabled) Color.Yellow else Color.LightGray
+                )
+            }
         }
 
         Box(
@@ -172,7 +187,7 @@ fun cameraScreen() {
                 IconButton(
                     onClick = {
                         isRecording = if (!isRecording) {
-                            startRecording(videoCapture, context)
+                            startRecording(videoCapture, context, TorchEnabled)
                             true
                         } else {
                             stopRecording()
@@ -193,7 +208,7 @@ fun cameraScreen() {
 
                 IconButton(
                     onClick = {
-                        capturePhoto(imageCapture, context)
+                        capturePhoto(imageCapture, context, TorchEnabled)
                     },
                     modifier = Modifier
                         .size(60.dp)
@@ -240,7 +255,7 @@ fun cameraScreen() {
 
 private var recording: Recording? = null
 
-private fun startRecording(videoCapture: VideoCapture<Recorder>, context: Context) {
+private fun startRecording(videoCapture: VideoCapture<Recorder>, context: Context, TorchEnabled: Boolean) {
     val videoFile = File(
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
         "Albums/CamApp Videos/VID_${System.currentTimeMillis()}.mp4"
@@ -287,9 +302,14 @@ private suspend fun Context.getCameraProvider() : ProcessCameraProvider = suspen
     )
 }
 
-private fun capturePhoto(imageCapture: ImageCapture, context: Context){
+private fun capturePhoto(imageCapture: ImageCapture, context: Context, torchEnabled: Boolean){
     val name = "Img_${System.currentTimeMillis()}.jpg"
 
+    if (torchEnabled) {
+        imageCapture.flashMode = ImageCapture.FLASH_MODE_ON
+    } else {
+        imageCapture.flashMode = ImageCapture.FLASH_MODE_OFF
+    }
 // Meta data of the images
     val contentValues = ContentValues().apply{
         put(MediaStore.MediaColumns.DISPLAY_NAME, name)
@@ -398,3 +418,62 @@ fun QRDialog(scannedText: MutableState<String?>) {
         modifier = Modifier.background(Color.DarkGray), // Theming the dialog background
     )
 }
+
+@Composable
+fun CameraPreview(cameraSelector: CameraSelector, torchEnabled: Boolean) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    AndroidView(
+        factory = { ctx ->
+            val previewView = PreviewView(ctx)
+            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+
+            cameraProviderFuture.addListener({
+                val cameraProvider = cameraProviderFuture.get()
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                }
+
+                val camera = cameraProvider.bindToLifecycle(
+                    lifecycleOwner, cameraSelector, preview
+                )
+
+                // Enable/Disable Flash
+                camera.cameraControl.enableTorch(torchEnabled)
+
+            }, ContextCompat.getMainExecutor(ctx))
+
+            previewView
+        },
+        modifier = Modifier.fillMaxSize()
+    )
+}
+
+//@Composable
+//fun CameraPreviewWithNightVision(
+//    previewView: PreviewView,
+//    isNightVision: Boolean
+//) {
+//    AndroidView(
+//        factory = { previewView },
+//        modifier = Modifier.fillMaxSize()
+//    ) {
+//        if (isNightVision) {
+//            it.setColorFilter(
+//                ColorMatrixColorFilter(
+//                    ColorMatrix(
+//                        floatArrayOf(
+//                            0f, 1f, 0f, 0f, 0f,  // Red to Green
+//                            0f, 1f, 0f, 0f, 0f,  // Keep Green
+//                            0f, 1f, 0f, 0f, 0f,  // Blue to Green
+//                            0f, 0f, 0f, 1f, 0f   // Alpha
+//                        )
+//                    )
+//                )
+//            )
+//        } else {
+//            it.clearColorFilter()
+//        }
+//    }
+//}
