@@ -39,6 +39,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +54,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -126,6 +129,17 @@ fun cameraScreen() {
         }
     }
     var TorchEnabled by remember { mutableStateOf(false) }
+    var showBlackout by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope() // Required for launching coroutines
+
+    fun triggerBlackout() {
+        showBlackout = true
+        coroutineScope.launch {
+            delay(300L)  // 0.3 seconds delay
+            showBlackout = false
+        }
+    }
 
     LaunchedEffect(cameraSelector.value) {
         val cameraProvider = context.getCameraProvider()
@@ -142,6 +156,14 @@ fun cameraScreen() {
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
+
+        if (showBlackout) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.35f))
+            )
+        }
 
         Column( modifier = Modifier.align(Alignment.TopEnd)) {
             IconButton(
@@ -215,6 +237,7 @@ fun cameraScreen() {
                 IconButton(
                     onClick = {
                         capturePhoto(imageCapture, context, TorchEnabled)
+                        triggerBlackout()
                     },
                     modifier = Modifier
                         .size(60.dp)
@@ -258,6 +281,15 @@ fun cameraScreen() {
         }
     }
 }
+//
+//@Composable
+//fun triggerBlackout() {
+//    showBlackout = true
+//    LaunchedEffect(Unit) {
+//        delay(500L)  // 0.5 seconds delay
+//        showBlackout = false
+//    }
+//}
 
 private var recording: Recording? = null
 
