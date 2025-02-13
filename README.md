@@ -31,7 +31,7 @@ CamApp is a simple camera application for Android, built using Jetpack Compose a
 
 **![Image](https://github.com/user-attachments/assets/0d1e8862-1c19-42af-bcd2-7d7d96c3a889)**
 
-*This chart illustrates the breakdown of the APK's contents, showing the size contribution of various components.  Optimizations have been implemented to minimize the app's storage by removing unnecessary libraries. It has a download size of 18.6 MB and apk size of 48.2 MB*
+*This chart illustrates the breakdown of the APK's contents, showing the size contribution of various components.  Optimizations have been implemented to minimize the app's storage by removing unnecessary libraries. It has a download size (compressed size) of 18.6 MB and apk size (entire package size) of 48.2 MB*
 
 ## Implementation Details
 
